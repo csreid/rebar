@@ -11,18 +11,20 @@ Q_network = Sequential(
 	Linear(32, 2)
 )
 
-agt = QLearner(env.action_space, env.observation_space, Q)
+agt_cfg = {
+	"action_space": env.action_space,
+	"observation_space": env.observation_space,
+	"Q": Q
+}
 
-s = env.reset()
-done = False
-for step in range(5000):
-	a = agt.get_action(s)
-	sp, r, done, _ = env.step(a)
+exp = Experiment(
+	env,
+	QLearner,
+	agt_cfg,
+	eval_freq=100,
+	steps_per_trial=5000,
+	n_trials=10
+)
 
-	agt.handle_transition(s, a, r, sp, done)
-
-	s = sp
-	if done:
-		done = False
-		s = env.reset()
+results = exp.run()
 ```

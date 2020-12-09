@@ -14,9 +14,9 @@ class Memory:
 	def __len__(self):
 		return min(self._counter, self.max_len)
 
-	def append(self, t):
+	def append(self, transition):
 		i = self._counter
-		s, a, r, sp, done = t
+		s, a, r, sp, done = transition
 		idx = i % self.max_len
 
 		self.s_s[idx] = s
@@ -68,20 +68,20 @@ class _SumTree:
 	def total(self):
 		return self.tree[0]
 
-	def add(self, p, data):
+	def add(self, priority, data):
 		idx = (self.write % self.max_len) + self.max_len - 1
 
 		data_idx = self.write % self.max_len
 		self.data[data_idx] = data
-		self.update(idx, p)
+		self.update(idx, priority)
 
 		self.write += 1
 
 		self._counter = min(self._counter+1, self.max_len)
 
-	def update(self, idx, p):
-		change = p - self.tree[idx]
-		self.tree[idx] = p
+	def update(self, idx, priority):
+		change = priority - self.tree[idx]
+		self.tree[idx] = priority
 
 		self._propagate(idx, change)
 
@@ -108,9 +108,9 @@ class PrioritizedMemory:
 	def _get_priority(self, err):
 		return (np.abs(err) + self.e) ** self.a
 
-	def append(self, t, err):
-		p = self._get_priority(err)
-		self.tree.add(p, t)
+	def append(self, transition, err):
+		priority = self._get_priority(err)
+		self.tree.add(priority, transition)
 
 	def sample(self, n):
 		batch = []
@@ -121,18 +121,16 @@ class PrioritizedMemory:
 		self.beta = np.min([1., self.beta + self.beta_inc])
 
 		for i in range(n):
-			a = seg * i
-			b = seg * (i + 1)
+			minval = seg * i
+			maxval = seg * (i + 1)
 
-			s = np.random.uniform(a, b)
-			idx, p, data = self.tree.get(s)
-			priorities.append(p)
+			s = np.random.uniform(minval, maxval)
+			idx, priority, data = self.tree.get(s)
+			priorities.append(priority)
 			batch.append(data)
 			idxs.append(idx)
 
 		priorities = np.array(priorities)
-		#batch = np.array(batch)
-		#idxs = np.array(idxs)
 
 		p_s = priorities / self.tree.total()
 		is_weight = np.power(len(self.tree) * p_s, -self.beta)
@@ -141,5 +139,5 @@ class PrioritizedMemory:
 		return batch, idxs, is_weight
 
 	def update(self, idx, error):
-		p = self._get_priority(error)
-		self.tree.update(idx, p)
+		priority = self._get_priority(error)
+		self.tree.update(idx, priority)

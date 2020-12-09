@@ -1,19 +1,15 @@
-import numpy as np
-import torch
 import time
-import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
-from matplotlib.animation import FuncAnimation
-from scipy.special import softmax
+import numpy as np
 
 class Learner:
+	def __init__(self):
+		self.name = None
+
 	def get_action(self, s, explore=True):
 		if explore:
-			ps = self.exploration_strategy(s)
-			return np.random.choice(np.arange(len(ps)), p=ps)
+			return self.exploration_policy(s)
 
-		ps = self.deterministic_strategy(s)
-		return np.random.choice(np.arange(len(ps)), p=ps)
+		return self.exploitation_policy(s)
 
 	def evaluate(self, env, n, starting_state=None, max_steps=None):
 		vals = []
@@ -40,8 +36,7 @@ class Learner:
 			vals.append(total_r)
 
 		evl = np.mean(np.array(vals))
-		self._last_eval = evl
-		return np.mean(np.array(vals))
+		return evl
 
 	def play(self, env):
 		done = False
@@ -67,8 +62,8 @@ class Learner:
 	def get_action_vals(self, s):
 		raise NotImplementedError
 
-	def exploration_strategy(self, s):
+	def exploration_policy(self, s):
 		raise NotImplementedError
 
-	def deterministic_strategy(self, s):
+	def exploitation_policy(self, s):
 		raise NotImplementedError
