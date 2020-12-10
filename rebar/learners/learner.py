@@ -4,6 +4,7 @@ import numpy as np
 class Learner:
 	def __init__(self):
 		self.name = None
+		self._steps = 0
 
 	def get_action(self, s, explore=True):
 		if explore:
@@ -57,9 +58,6 @@ class Learner:
 		self.name = name
 
 	def handle_transition(self, s, a, r, sp, done):
-		raise NotImplementedError
-
-	def get_action_vals(self, s):
 		raise NotImplementedError
 
 	def exploration_policy(self, s):
