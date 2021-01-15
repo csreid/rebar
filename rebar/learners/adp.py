@@ -33,22 +33,10 @@ class ADP(Learner):
 		sp_shape = tuple(sp_shape)
 		self._temp = initial_temp
 
-		self.F = np.zeros(
-			tuple([bins+1 for _ in range(self.n_obs)]) +
-			(self.n_actions,) +
-			sp_shape,
-		)
+		self.F = {}
+		self.R = {}
 
 		self._terminal_state = tuple([i-1 for i in sp_shape])
-
-		self.R = np.frompyfunc(list, 0, 1)(
-			np.empty(
-				tuple([bins+1 for _ in range(self.n_obs)]) +
-				(self.n_actions,) +
-				sp_shape,
-				dtype='object'
-			)
-		)
 
 		self.V = np.zeros(tuple(
 			[bins+1 for _ in range(self.n_obs)]
@@ -66,11 +54,13 @@ class ADP(Learner):
 				self._statemap[s + (a,)] = []
 
 	def p_sp(self, s, a, sp):
-		idx_sp = tuple(s) + (a,) + tuple(sp)
-		idx_s = tuple(s) + (a,)
+		expected_reward = np.mean(self.R[tuple(s)][a][tuple(sp)])
 
-		expected_reward = np.mean(self.R[idx_sp])
-		p_sp = (self.F[idx_sp]) / np.sum(self.F[idx_s])
+		total_s_a = 0
+		for tmp in self.F[tuple(s)][a]:
+			total_s_a += self.F[tuple(s)][a][tmp]
+
+		p_sp = (self.F[tuple(s)][a][tuple(sp)]) / total_s_a
 
 		return p_sp, expected_reward
 
@@ -82,8 +72,23 @@ class ADP(Learner):
 			sp = self._terminal_state
 
 		self.visits[tuple(s)] += 1
-		self.F[tuple(s) + (a,) + tuple(sp)] += 1
-		self.R[tuple(s) + (a,) + tuple(sp)].append(r)
+		if tuple(s) not in self.F:
+			self.F[tuple(s)] = {}
+		if a not in self.F[tuple(s)]:
+			self.F[tuple(s)][a] = {}
+		if tuple(sp) not in self.F[tuple(s)][a]:
+			self.F[tuple(s)][a][tuple(sp)] = 0
+
+		self.F[tuple(s)][a][tuple(sp)] += 1
+
+		if tuple(s) not in self.R:
+			self.R[tuple(s)] = {}
+		if a not in self.R[tuple(s)]:
+			self.R[tuple(s)][a] = {}
+		if tuple(sp) not in self.R[tuple(s)][a]:
+			self.R[tuple(s)][a][tuple(sp)] = []
+
+		self.R[tuple(s)][a][tuple(sp)].append(r)
 
 		if tuple(s) + (a,) in self._statemap:
 			self._statemap[tuple(s) + (a,)].append(sp)
@@ -97,10 +102,7 @@ class ADP(Learner):
 
 	def do_pass(self):
 		delta = 0
-		for s in product(*[range(self.bins+1) for _ in range(self.n_obs)]):
-			if self.visits[s] == 0:
-				pass
-
+		for s in self.F:
 			v = self.V[s]
 			self.V[s] = np.max(self.get_action_vals(s))
 			delta = np.max([delta, np.abs(v - self.V[s])])
@@ -146,5 +148,7 @@ class ADP(Learner):
 	def exploitation_policy(self, s):
 		s = self._convert_to_discrete(s)
 		qs = self.get_action_vals(s)
+		temp=1.
+		ps = [(e ** (q / temp)) / np.sum(e ** (qs / temp)) for q in qs]
 
-		return np.argmax(qs)
+		return np.random.choice(np.arange(len(ps)), p=ps)
