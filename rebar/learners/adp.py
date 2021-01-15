@@ -2,7 +2,7 @@ import numpy as np
 from numpy import e
 from itertools import product
 
-from learner import Learner
+from .learner import Learner
 from IPython import embed
 
 import gym
@@ -15,6 +15,7 @@ class ADP(Learner):
 		bins,
 		mins,
 		maxes,
+		initial_temp=5000,
 		gamma=0.99,
 		delta=0.1
 	):
@@ -30,12 +31,12 @@ class ADP(Learner):
 		sp_shape = [bins+1 for _ in range(self.n_obs)]
 		sp_shape[0] += 1
 		sp_shape = tuple(sp_shape)
-		self._temp = 5000
+		self._temp = initial_temp
 
 		self.F = np.zeros(
 			tuple([bins+1 for _ in range(self.n_obs)]) +
 			(self.n_actions,) +
-			sp_shape
+			sp_shape,
 		)
 
 		self._terminal_state = tuple([i-1 for i in sp_shape])
@@ -78,7 +79,6 @@ class ADP(Learner):
 		sp = self._convert_to_discrete(sp)
 
 		if done:
-			print('handling a done')
 			sp = self._terminal_state
 
 		self.visits[tuple(s)] += 1
@@ -105,11 +105,6 @@ class ADP(Learner):
 			self.V[s] = np.max(self.get_action_vals(s))
 			delta = np.max([delta, np.abs(v - self.V[s])])
 
-			if self.V[s] > (1 / (1 - self.gamma)):
-				print(f'Impossible: {np.max(self.V)}')
-				print(f'Action vals: {self.get_action_vals(s)}')
-				embed()
-				raise Exception('Broked')
 		return delta
 
 	def get_action_vals(self, s):
