@@ -19,19 +19,23 @@ class DDPGLearner(Learner):
 		gamma=0.99,
 		memory_len=10000,
 		tau=0.001,
-		exploration_steps=10000
+		exploration_steps=100000
 	):
 		super().__init__()
 
 		self.action_space = action_space
-		self._memory = Memory(memory_len, observation_space.shape)
+		self._memory = Memory(
+			memory_len,
+			observation_space.shape,
+			action_space.shape
+		)
 		self.ac_network = actor_critic
 		self.target_ac_network = copy.deepcopy(actor_critic)
 
 		self.tau = tau
 		self.gamma = gamma
-		self.actor_opt = opt(self.ac_network.mu_parameters())
-		self.critic_opt = opt(self.ac_network.q_parameters())
+		self.critic_opt = opt(self.ac_network.q_parameters(), lr=0.001)
+		self.actor_opt = opt(self.ac_network.mu_parameters(), lr=0.0001)
 
 		self.epsilon = 1.
 		self.decay = 1. / exploration_steps
@@ -48,7 +52,7 @@ class DDPGLearner(Learner):
 			s_s, a_s, r_s, sp_s, done_s = self._memory.sample(n)
 			vhat_sp_s = self.ac_network(sp_s).reshape(-1)
 
-			q_target = r_s + 0.99 * (1 - torch.tensor(done_s).float()) * vhat_sp_s
+			q_target = r_s + self.gamma * (1 - torch.tensor(done_s).float()) * vhat_sp_s
 			y = q_target
 
 		return s_s, a_s, y
@@ -88,6 +92,7 @@ class DDPGLearner(Learner):
 		actions = self.ac_network.actor(s_s)
 		loss = -self.ac_network.critic(s_s, actions)
 		loss = loss.mean()
+		loss.backward()
 		self.actor_opt.step()
 
 		self._soft_update()
@@ -98,15 +103,19 @@ class DDPGLearner(Learner):
 		self._steps += 1
 
 	def exploration_policy(self, s):
-		a = self.ac_network.actor(s)
+		a = self.ac_network.actor(s).detach()
 		a += self.epsilon * self._rp.sample()
+		a = torch.clamp(a, min=-1, max=1)
+		a = a.detach().numpy()
 
 		self.epsilon -= self.decay
 
 		if self.epsilon < 0:
 			self.epsilon = 0
 
-		return a
+		a = torch.tensor(a).detach().numpy()[0]
+		return torch.tensor(a).detach().numpy()
 
 	def exploitation_policy(self, s):
-		return self.ac_network.actor(s)
+		a = self.ac_network.actor(s).detach().numpy()[0]
+		return a

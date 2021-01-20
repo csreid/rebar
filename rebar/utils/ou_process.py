@@ -30,15 +30,15 @@ class AnnealedGaussianProcess(RandomProcess):
 # Based on http://math.stackexchange.com/questions/1287634/implementing-ornstein-uhlenbeck-in-matlab
 class OrnsteinUhlenbeckProcess(AnnealedGaussianProcess):
 	def __init__(
-	  self,
-	  theta,
-	  mu=0.,
-	  sigma=1.,
-	  dt=1e-2,
-	  x0=None,
-	  size=1,
-	  sigma_min=None,
-	  n_steps_annealing=1000
+		self,
+		theta,
+		mu=0.,
+		sigma=1.,
+		dt=1e-2,
+		x0=None,
+		size=1,
+		sigma_min=None,
+		n_steps_annealing=1000
 	):
 		super(OrnsteinUhlenbeckProcess, self).__init__(mu=mu, sigma=sigma, sigma_min=sigma_min, n_steps_annealing=n_steps_annealing)
 		self.theta = theta
@@ -50,11 +50,13 @@ class OrnsteinUhlenbeckProcess(AnnealedGaussianProcess):
 		self.reset_states()
 
 	def sample(self):
-		x = self.x_prev + self.theta * (self.mu - self.x_prev) * self.dt + self.current_sigma * np.sqrt(self.dt) * np.random.normal(size=self.size)
+		x = self.x_prev + \
+			self.theta * (self.mu - self.x_prev) * self.dt + \
+			self.current_sigma * np.sqrt(self.dt) * np.random.normal(size=self.size)
 		self.x_prev = x
 		self.n_steps += 1
+
 		return x
 
 	def reset_states(self):
 		self.x_prev = self.x0 if self.x0 is not None else np.zeros(self.size)
-

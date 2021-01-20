@@ -138,17 +138,32 @@ class ADP(Learner):
 
 		return new_obs
 
+	def action_probabilities(self, s, temp=None):
+		if temp is None:
+			temp = self._temp
+
+		s = self._convert_to_discrete(s)
+
+		temp = self._temp
+		qs = self.get_action_vals(s)
+		qs = qs - np.max(qs)
+		ps = [(e ** (q / temp)) / np.sum(e ** (qs / temp)) for q in qs]
+
+		return ps
+
 	def exploration_policy(self, s):
 		s = self._convert_to_discrete(s)
 
-		qs = self.get_action_vals(s)
-		ps = [(e ** (q / self._temp)) / np.sum(e ** (qs / self._temp)) for q in qs]
+		ps = self.action_probabilities(s)
+
 		return np.random.choice(np.arange(len(ps)), p=ps)
 
 	def exploitation_policy(self, s):
-		s = self._convert_to_discrete(s)
-		qs = self.get_action_vals(s)
-		temp=1.
-		ps = [(e ** (q / temp)) / np.sum(e ** (qs / temp)) for q in qs]
+		try:
+			s = self._convert_to_discrete(s)
+			ps = self.action_probabilities(s, temp=1.)
 
-		return np.random.choice(np.arange(len(ps)), p=ps)
+			return np.random.choice(np.arange(len(ps)), p=ps)
+		except Exception as exc:
+			print(self.get_action_vals(s))
+			raise exc
