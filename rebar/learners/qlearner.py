@@ -2,13 +2,36 @@ import copy
 
 import numpy as np
 import torch
-from torch.nn import  MSELoss
+from torch.nn import  MSELoss, Module, Linear, LeakyReLU
+from torch.nn.functional import leaky_relu
 from torch.optim import Adam
 
 from ..memory import Memory
 from .learner import Learner
 
 np.seterr(all='raise')
+
+class SimpleFFNN(Module):
+	def __init__(self, action_space, observation_space):
+		super().__init__()
+		self.n_actions = action_space.n
+		self.obs_size = observation_space.shape[0]
+
+		self.input = Linear(self.obs_size, 2 * self.obs_size)
+		self.hidden = Linear(2 * self.obs_size, 2 * self.obs_size)
+		self.output = Linear(2 * self.obs_size, self.n_actions)
+
+	def forward(self, s):
+		if (len(s.shape) == 1):
+			s = s.reshape(1, -1)
+
+		out = self.input(s)
+		out = leaky_relu(out)
+		out = self.hidden(out)
+		out = leaky_relu(out)
+		out = self.output(out)
+
+		return out
 
 class QLearner(Learner):
 	def __init__(
@@ -22,13 +45,18 @@ class QLearner(Learner):
 		gamma=0.99,
 		memory_len=10000,
 		target_lag=None,
-		exploration_steps=10000
+		exploration_steps=10000,
+		initial_epsilon=1.0,
+		final_epsilon=0.01
 	):
 		super().__init__()
 
+		if Q == 'simple':
+			Q = SimpleFFNN(action_space, observation_space)
+
 		self.n_actions = action_space.n
 		self.action_space = action_space
-		self._memory = Memory(memory_len, observation_space.shape)
+		self._memory = Memory(memory_len, observation_space.shape, (1,))
 		self.Q = Q
 
 		if target_lag is not None:
@@ -44,8 +72,8 @@ class QLearner(Learner):
 		self._base_loss_fn = loss()
 		self._steps = 0
 
-		self.eps = 1.
-		self.decay = 0.01 ** (1/exploration_steps)
+		self.eps = initial_epsilon
+		self.decay = final_epsilon ** (1/exploration_steps)
 
 	def learn(self, n_samples=64):
 		if len(self._memory) < n_samples:
@@ -105,11 +133,13 @@ class QLearner(Learner):
 			self.eps = 0.01
 
 		if np.random.random() > self.eps:
-			best_action = torch.argmax(self.Q(s[None, :]))
+			best_action = torch.argmax(self.Q(s[None, :])).detach().numpy()
+			a = best_action
 
-			return best_action
+		else:
+			a = self.action_space.sample()
 
-		return self.action_space.sample()
+		return a
 
 	def exploitation_policy(self, s):
 		eps = 0.05

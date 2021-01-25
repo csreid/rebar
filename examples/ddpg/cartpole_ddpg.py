@@ -6,23 +6,23 @@ from torch import tanh
 from torch.nn import Sequential, Linear, LeakyReLU, Module
 from torch.nn.functional import leaky_relu
 from gym import ObservationWrapper, ActionWrapper
+import pybulletgym
 from itertools import chain
 
 class TorchWrapper(ObservationWrapper):
 	def observation(self, obs):
-		return torch.tensor(obs)
+		return torch.tensor(obs).float()
 
 class ActorCritic(Module):
 	def __init__(self, n_actions, n_obs):
 		super().__init__()
 		self.mu_input = Linear(n_obs, 64)
-		self.mu_h1 = Linear(64, 128)
-		self.mu_h2 = Linear(128, 128)
-		self._mu = Linear(128, n_actions)
+		self.mu_h1 = Linear(64, 64)
+		self._mu = Linear(64, n_actions)
 
 		self.q_input = Linear(n_obs, 64)
-		self.q_h1 = Linear(64 + n_actions, 128)
-		self._Q = Linear(128, 1)
+		self.q_h1 = Linear(64 + n_actions, 64)
+		self._Q = Linear(64, 1)
 
 	def q_parameters(self):
 		return chain(
@@ -35,7 +35,6 @@ class ActorCritic(Module):
 		return chain(
 			self.mu_input.parameters(),
 			self.mu_h1.parameters(),
-			self.mu_h2.parameters(),
 			self._mu.parameters()
 		)
 
@@ -62,8 +61,6 @@ class ActorCritic(Module):
 		mu = leaky_relu(mu)
 		mu = self.mu_h1(mu)
 		mu = leaky_relu(mu)
-		mu = self.mu_h2(mu)
-		mu = leaky_relu(mu)
 		mu = self._mu(mu)
 
 		mu = tanh(mu)
@@ -79,8 +76,11 @@ class ActorCritic(Module):
 
 		return q
 
-env = TorchWrapper(gym.make('LunarLanderContinuous-v2'))
-eval_env = TorchWrapper(gym.make('LunarLanderContinuous-v2'))
+env_name='InvertedPendulumPyBulletEnv-v0'
+env = TorchWrapper(gym.make(env_name).env)
+eval_env = TorchWrapper(gym.make(env_name))
+
+env.render()
 
 ac = ActorCritic(env.action_space.shape[0], env.observation_space.shape[0])
 agt = DDPGLearner(
@@ -104,6 +104,7 @@ for step in range(50000):
 
 	if (step % 1000) == 0:
 		print(f'{step}: {agt.evaluate(eval_env, 10)}')
-		agt.play(eval_env)
+		#agt.play(play_env)
 
 agt.play(eval_env)
+

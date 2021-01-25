@@ -38,6 +38,26 @@ class Memory:
 			self.done_mask[idx]
 		)
 
+	def __iter__(self):
+		self._n = 0
+
+		return self
+
+	def __next__(self):
+		if self._n >= min(self._counter, self.max_len):
+			raise StopIteration
+
+		val = (
+			self.s_s[self._n],
+			self.a_s[self._n],
+			self.r_s[self._n],
+			self.sp_s[self._n],
+			self.done_mask[self._n]
+		)
+		self._n += 1
+
+		return val
+
 class _SumTree:
 	write = 0
 	def __init__(self, max_len):

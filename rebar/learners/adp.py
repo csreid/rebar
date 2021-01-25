@@ -13,8 +13,6 @@ class ADP(Learner):
 		action_space,
 		observation_space,
 		bins,
-		mins,
-		maxes,
 		initial_temp=5000,
 		gamma=0.99,
 		delta=0.1
@@ -26,8 +24,8 @@ class ADP(Learner):
 		self.gamma = gamma
 		self.delta = delta
 
-		self.mins = mins
-		self.maxes = maxes
+		self.mins = observation_space.low
+		self.maxes = observation_space.high
 		sp_shape = [bins+1 for _ in range(self.n_obs)]
 		sp_shape[0] += 1
 		sp_shape = tuple(sp_shape)
@@ -110,6 +108,8 @@ class ADP(Learner):
 		return delta
 
 	def get_action_vals(self, s):
+		s = self._convert_to_discrete(s)
+
 		vals = []
 		for a in range(self.n_actions):
 			total = 0

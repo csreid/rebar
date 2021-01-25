@@ -3,6 +3,7 @@ import copy
 from ..memory import Memory
 from .learner import Learner
 from ..utils.ou_process import OrnsteinUhlenbeckProcess
+import numpy.random as npr
 import torch
 from torch.nn import MSELoss
 from torch.optim import Adam
@@ -19,7 +20,7 @@ class DDPGLearner(Learner):
 		gamma=0.99,
 		memory_len=10000,
 		tau=0.001,
-		exploration_steps=100000
+		exploration_steps=30000
 	):
 		super().__init__()
 
@@ -40,12 +41,6 @@ class DDPGLearner(Learner):
 		self.epsilon = 1.
 		self.decay = 1. / exploration_steps
 		self._base_loss_fn = loss()
-		self._rp = OrnsteinUhlenbeckProcess(
-			size=action_space.shape,
-			theta=0.15,
-			mu=0,
-			sigma=0.2
-		)
 
 	def _build_dataset(self, n):
 		with torch.no_grad():
@@ -104,7 +99,7 @@ class DDPGLearner(Learner):
 
 	def exploration_policy(self, s):
 		a = self.ac_network.actor(s).detach()
-		a += self.epsilon * self._rp.sample()
+		a += self.epsilon * npr.normal(size=a.shape)
 		a = torch.clamp(a, min=-1, max=1)
 		a = a.detach().numpy()
 
