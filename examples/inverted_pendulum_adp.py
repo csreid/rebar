@@ -6,7 +6,7 @@ from gym import ObservationWrapper, ActionWrapper
 from gym.spaces import Discrete
 import pybulletgym
 
-mins = np.array([-4.8, -2, -0.418, -4, -4])
+mins = np.array([-4.8, -4, -0.418, -4, -4])
 maxes = -mins
 
 class DiscreteActionWrapper(ActionWrapper):
@@ -19,11 +19,14 @@ class DiscreteActionWrapper(ActionWrapper):
 		else:
 			return np.array([1.])
 
-env_name = 'InvertedPendulumPyBulletEnv-v0'
-env = DiscreteActionWrapper(gym.make(env_name).env)
-eval_env = DiscreteActionWrapper(gym.make(env_name))
+env_name = 'CartPole-v1'
+env = gym.make(env_name).env
+env.observation_space.low = mins
+env.observation_space.high = -mins
+
+eval_env = gym.make(env_name)
 eval_env.render()
-sample_env = DiscreteActionWrapper(gym.make(env_name))
+sample_env = gym.make(env_name)
 
 sample_env.reset()
 for _ in range(10):
@@ -32,9 +35,7 @@ for _ in range(10):
 agt = ADP(
 	env.action_space,
 	env.observation_space,
-	bins=9,
-	mins=mins,
-	maxes=maxes,
+	bins=13,
 	initial_temp=2000,
 	gamma=0.99
 )
@@ -42,10 +43,14 @@ agt = ADP(
 sample_s_discrete = agt._convert_to_discrete(sample_s)
 
 s = env.reset()
+all_states = []
+generated_states = []
+
 for step in range(5000):
 	a = int(agt.get_action(s))
 	sp, r, done, _ = env.step(a)
 
+	s_d = agt._convert_to_discrete(s)
 	agt.handle_transition(s, a, r, sp, done)
 
 	s = sp

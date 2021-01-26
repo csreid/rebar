@@ -138,6 +138,22 @@ class ADP(Learner):
 
 		return new_obs
 
+	def sample_state(self, s, n):
+		if not all(type(i) == int for i in s):
+			s = self._convert_to_discrete(s)
+
+		# Take in a discretized state and return `n` random states in that "bin"
+		left_edge = np.array(s) - 1
+		right_edge = np.array(s)
+
+		gen = np.array([
+			np.random.uniform(low=self.bounds[idx][l], high=self.bounds[idx][r], size=n)
+			for idx, (l, r)
+			in enumerate(zip(left_edge, right_edge))
+		]).T
+
+		return gen
+
 	def action_probabilities(self, s, temp=None):
 		if temp is None:
 			temp = self._temp
