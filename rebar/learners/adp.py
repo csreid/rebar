@@ -160,7 +160,6 @@ class ADP(Learner):
 
 		s = self._convert_to_discrete(s)
 
-		temp = self._temp
 		qs = self.get_action_vals(s)
 		qs = qs - np.max(qs)
 		ps = [(e ** (q / temp)) / np.sum(e ** (qs / temp)) for q in qs]

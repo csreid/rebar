@@ -35,7 +35,7 @@ for _ in range(10):
 agt = ADP(
 	env.action_space,
 	env.observation_space,
-	bins=13,
+	bins=7,
 	initial_temp=2000,
 	gamma=0.99
 )
@@ -62,8 +62,7 @@ for step in range(5000):
 		av_s = agt.get_action_vals(sample_s_discrete)
 		sample_Q_s = agt.get_action_vals(sample_s_discrete)
 		print('=====')
-		print(f'{step}: {agt.evaluate(eval_env, 10)} | Temp: {agt._temp} | V: {np.min(agt.V)} - {np.mean(agt.V)} - {np.max(agt.V)}')
-		print(f'Sample State: {sample_s_discrete} | Mean Sample Q: {np.mean(sample_Q_s)} | Visits: {agt.visits[sample_s_discrete]}')
+		print(f'{step}: {agt.evaluate(eval_env, 10)}')
 		agt.play(eval_env)
 
 agt.play(eval_env)

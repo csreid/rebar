@@ -16,7 +16,7 @@ env.observation_space.high=maxes
 agt = ADP(
 	env.action_space,
 	env.observation_space,
-	bins=20,
+	bins=7,
 	initial_temp=2000,
 	gamma=0.99
 )
