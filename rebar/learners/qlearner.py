@@ -75,7 +75,7 @@ class QLearner(Learner):
 		self.eps = initial_epsilon
 		self.decay = final_epsilon ** (1/exploration_steps)
 
-	def learn(self, n_samples=64):
+	def learn(self, n_samples=32):
 		if len(self._memory) < n_samples:
 			return 'n/a'
 
