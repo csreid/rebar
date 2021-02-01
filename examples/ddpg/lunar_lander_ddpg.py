@@ -87,6 +87,7 @@ agt = DDPGLearner(
 	env.action_space,
 	env.observation_space,
 	ac,
+	memory_len=5000,
 	gamma=0.99,
 	exploration_steps=15000
 )

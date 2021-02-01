@@ -142,7 +142,7 @@ class QLearner(Learner):
 		return a
 
 	def exploitation_policy(self, s):
-		eps = 0.05
+		eps = 0.
 		if np.random.random() > eps:
 			best_action = torch.argmax(self.Q(s[None, :])).detach().numpy()
 			a = best_action

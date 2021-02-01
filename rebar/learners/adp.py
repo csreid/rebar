@@ -139,10 +139,11 @@ class ADP(Learner):
 		return new_obs
 
 	def sample_state(self, s, n):
+		# Take in a discretized state and return `n` random states in that "bin"
+
 		if not all(type(i) == int for i in s):
 			s = self._convert_to_discrete(s)
 
-		# Take in a discretized state and return `n` random states in that "bin"
 		left_edge = np.array(s) - 1
 		right_edge = np.array(s)
 
@@ -154,6 +155,41 @@ class ADP(Learner):
 
 		return gen
 
+	def simulate_step(self, s, a, n=1):
+		if not all(type(i) == int for i in s):
+			s = self._convert_to_discrete(s)
+
+		sp_s = []
+		r_s = []
+		p_s = []
+		for sp in self.F[s][a]:
+			p_sp, r = self.p_sp(s, a, sp)
+			p_s.append(p_sp)
+			r_s.append(r)
+			sp_s.append(self.continuize_state(sp))
+
+		ns = np.random.choice(len(sp_s), p=np.array(p_s), size=n)
+		ns = np.array([
+			sp_s[i]
+			for i
+			in ns
+		])
+
+		return ns
+
+	def continuize_state(self, s):
+		# Take a discretized state and return the middle continuous state value
+		if not all(type(i) == int for i in s):
+			s = self._convert_to_discrete(s)
+
+		left_edge = np.array(s) - 1
+		right_edge = np.array(s)
+
+		low = np.array([self.bounds[idx][l] for idx, l in enumerate(left_edge)])
+		high = np.array([self.bounds[idx][h] for idx, h in enumerate(right_edge)])
+
+		return (low + high) / 2
+
 	def action_probabilities(self, s, temp=None):
 		if temp is None:
 			temp = self._temp
@@ -161,8 +197,7 @@ class ADP(Learner):
 		s = self._convert_to_discrete(s)
 
 		qs = self.get_action_vals(s)
-		qs = qs - np.max(qs)
-		ps = [(e ** (q / temp)) / np.sum(e ** (qs / temp)) for q in qs]
+		ps = softmax(qs / temp)
 
 		return ps
 

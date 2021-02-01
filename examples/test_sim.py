@@ -17,27 +17,28 @@ env.observation_space.high = -mins
 agt = ADP(
 	env.action_space,
 	env.observation_space,
-	bins=9,
+	bins=5,
 	initial_temp=2000,
 	gamma=0.99
 )
 
 s = env.reset()
-
-for step in range(5000):
-	a = int(agt.get_action(s))
+for _ in range(50000):
+	a = agt.get_action(s)
 	sp, r, done, _ = env.step(a)
 
-	s_d = agt._convert_to_discrete(s)
 	agt.handle_transition(s, a, r, sp, done)
-
 	s = sp
 	if done:
+		done = False
 		s = env.reset()
 
 s = env.reset()
-print(f's: {s}')
-print(f'sims:')
-agt.simulate(s, 0)
-sp, r, done, _ = env.step(0)
-print(f'Actual: {sp}')
+discrete_state = agt._convert_to_discrete(s)
+taken_action = np.sum(agt.F[discrete_state][0][sp] for sp in agt.F[discrete_state][0])
+print(s)
+print(agt.continuize_state(s))
+print(f'Seen the state {agt.visits[agt._convert_to_discrete(s)]} times; taken the action {taken_action}')
+print(np.mean(agt.simulate_step(s, 0, n=50), axis=0))
+s, r, done, _ = env.step(a)
+print(s)

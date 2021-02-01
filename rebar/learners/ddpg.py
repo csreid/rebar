@@ -71,7 +71,7 @@ class DDPGLearner(Learner):
 				t_param.data * (1. - self.tau) + s_param.data * self.tau
 			)
 
-	def learn(self, n_samples=64):
+	def learn(self, n_samples=256):
 		if len(self._memory) < n_samples:
 			return
 
