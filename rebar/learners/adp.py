@@ -4,6 +4,7 @@ from itertools import product
 
 from .learner import Learner
 from IPython import embed
+from scipy.special import softmax
 
 import gym
 
