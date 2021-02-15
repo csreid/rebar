@@ -37,10 +37,8 @@ class ADP(Learner):
 
 		self._terminal_state = tuple([i-1 for i in sp_shape])
 
-		self.V = np.zeros(tuple(
-			[bins+1 for _ in range(self.n_obs)]
-		))
-		self.visits = np.zeros(self.V.shape)
+		self.V = {}
+		self.visits = {}
 
 		self.bounds = np.array([
 			np.linspace(self.mins[i], self.maxes[i], bins)
@@ -48,9 +46,23 @@ class ADP(Learner):
 		])
 
 		self._statemap = {}
-		for s in product(*[range(bins+1) for _ in range(self.n_obs)]):
-			for a in range(self.n_actions):
-				self._statemap[s + (a,)] = []
+
+	def upsilon(self, s):
+		s = self._convert_to_discrete(s)
+
+		if s in self.visits:
+			return np.sqrt(self.visits[s])
+
+		return 0
+
+
+	def psi(self, s):
+		vals = self.get_action_vals(s)
+
+		return self.upsilon(s) * np.abs(np.max(vals) - np.min(vals))
+
+	def confidence(self, s):
+		return 1 - (1 ** (-self.psi(s)))
 
 	def p_sp(self, s, a, sp):
 		expected_reward = np.mean(self.R[tuple(s)][a][tuple(sp)])
@@ -67,10 +79,16 @@ class ADP(Learner):
 		s = self._convert_to_discrete(s)
 		sp = self._convert_to_discrete(sp)
 
+		a = int(a)
+
 		if done:
 			sp = self._terminal_state
 
-		self.visits[tuple(s)] += 1
+		if tuple(s) in self.visits:
+			self.visits[tuple(s)] += 1
+		else:
+			self.visits[tuple(s)] = 1
+
 		if tuple(s) not in self.F:
 			self.F[tuple(s)] = {}
 		if a not in self.F[tuple(s)]:
@@ -90,9 +108,9 @@ class ADP(Learner):
 		self.R[tuple(s)][a][tuple(sp)].append(r)
 
 		if tuple(s) + (a,) in self._statemap:
-			self._statemap[tuple(s) + (a,)].append(sp)
+			self._statemap[tuple(s) + (a,)].add(sp)
 		else:
-			self._statemap[tuple(s) + (a,)] = [sp]
+			self._statemap[tuple(s) + (a,)] = set([sp])
 
 		self._temp = max(1, self._temp-1)
 		passes = 0
@@ -102,9 +120,12 @@ class ADP(Learner):
 	def do_pass(self):
 		delta = 0
 		for s in self.F:
-			v = self.V[s]
-			self.V[s] = np.max(self.get_action_vals(s))
-			delta = np.max([delta, np.abs(v - self.V[s])])
+			if tuple(s) in self.V:
+				v = self.V[tuple(s)]
+			else:
+				v = 0.
+			self.V[tuple(s)] = np.max(self.get_action_vals(s))
+			delta = np.max([delta, np.abs(v - self.V[tuple(s)])])
 
 		return delta
 
@@ -114,14 +135,18 @@ class ADP(Learner):
 		vals = []
 		for a in range(self.n_actions):
 			total = 0
-			for sp in set(self._statemap[tuple(s) + (a,)]):
-				p_sp, e_r = self.p_sp(s, a, sp)
-				if sp == self._terminal_state:
-					v_sp = 0
-				else:
-					v_sp = self.V[sp]
+			if tuple(s) + (a,) in self._statemap:
+				for sp in set(self._statemap[tuple(s) + (a,)]):
+					p_sp, e_r = self.p_sp(s, a, sp)
+					if sp == self._terminal_state:
+						v_sp = 0
+					else:
+						if tuple(sp) in self.V:
+							v_sp = self.V[tuple(sp)]
+						else:
+							v_sp = 0.
 
-				total += p_sp * (e_r + self.gamma * v_sp)
+					total += p_sp * (e_r + self.gamma * v_sp)
 
 			vals.append(total)
 
@@ -141,12 +166,12 @@ class ADP(Learner):
 
 	def sample_state(self, s, n):
 		# Take in a discretized state and return `n` random states in that "bin"
-
 		if not all(type(i) == int for i in s):
 			s = self._convert_to_discrete(s)
 
 		left_edge = np.array(s) - 1
 		right_edge = np.array(s)
+		right_edge[right_edge == self.bins] -= 1
 
 		gen = np.array([
 			np.random.uniform(low=self.bounds[idx][l], high=self.bounds[idx][r], size=n)
@@ -198,7 +223,8 @@ class ADP(Learner):
 		s = self._convert_to_discrete(s)
 
 		qs = self.get_action_vals(s)
-		ps = softmax(qs / temp)
+		with np.errstate(divide='ignore', under='ignore'):
+			ps = softmax(qs / temp)
 
 		return ps
 
@@ -210,11 +236,10 @@ class ADP(Learner):
 		return np.random.choice(np.arange(len(ps)), p=ps)
 
 	def exploitation_policy(self, s):
-		try:
-			s = self._convert_to_discrete(s)
-			ps = self.action_probabilities(s, temp=1.)
+		s = self._convert_to_discrete(s)
 
-			return np.random.choice(np.arange(len(ps)), p=ps)
-		except Exception as exc:
-			print(self.get_action_vals(s))
-			raise exc
+		ps = self.action_probabilities(s, temp=1)
+
+		#return np.argmax(ps)
+
+		return np.random.choice(np.arange(len(ps)), p=ps)

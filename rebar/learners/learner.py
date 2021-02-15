@@ -52,8 +52,6 @@ class Learner:
 			env.render()
 			time.sleep(1./60.)
 
-		#env.close()
-
 	def set_name(self, name):
 		self.name = name
 
