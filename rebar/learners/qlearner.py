@@ -142,12 +142,5 @@ class QLearner(Learner):
 		return a
 
 	def exploitation_policy(self, s):
-		eps = 0.
-		if np.random.random() > eps:
-			best_action = torch.argmax(self.Q(s[None, :])).detach().numpy()
-			a = best_action
-		else:
-			probabilities = np.full(self.n_actions, 1 / self.n_actions)
-			a = np.random.choice(np.arange(len(probabilities)), p=probabilities)
-
-		return a
+		ps = torch.softmax(self.Q(s), dim=1).detach().numpy()[0]
+		return np.random.choice(np.arange(len(ps)), p=ps)
