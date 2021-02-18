@@ -62,7 +62,11 @@ class ADP(Learner):
 		return self.upsilon(s) * np.abs(np.max(vals) - np.min(vals))
 
 	def confidence(self, s):
-		return 1 - (1 ** (-self.psi(s)))
+		#return 1 - (1 ** (-self.psi(s)))
+		if s not in self.visits:
+			return 0
+
+		return 1 - (1 / (np.sqrt(self.visits[s])))
 
 	def p_sp(self, s, a, sp):
 		expected_reward = np.mean(self.R[tuple(s)][a][tuple(sp)])
