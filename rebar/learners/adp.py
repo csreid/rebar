@@ -244,6 +244,6 @@ class ADP(Learner):
 
 		ps = self.action_probabilities(s, temp=1)
 
-		#return np.argmax(ps)
+		return np.argmax(ps)
 
-		return np.random.choice(np.arange(len(ps)), p=ps)
+		#return np.random.choice(np.arange(len(ps)), p=ps)
